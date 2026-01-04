@@ -149,7 +149,9 @@ export default function OrderDetails({ orderId, onClose }: OrderDetailsProps) {
           <CustomerDetailsTab customer={customer} loading={!customer} />
         )}
         {activeTab === 'lane-history' && <LaneHistoryTab orderId={orderId} />}
-        {activeTab === 'calculator' && <CalculatorTab order={order} />}
+        {activeTab === 'calculator' && (
+          <CalculatorTab order={order} onRateUpdated={loadOrderDetails} />
+        )}
       </div>
     </div>
   );

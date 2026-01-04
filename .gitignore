@@ -46,6 +46,9 @@ __pycache__/
 *.so
 .Python
 
+# Prisma
+prisma/migrations/
+
 # Logs
 logs/
 *.log

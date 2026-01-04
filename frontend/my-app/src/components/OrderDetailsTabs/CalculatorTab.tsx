@@ -2,16 +2,21 @@
 
 import { useState } from 'react';
 import { OrderDetail } from '@/types/api';
+import { apiClient } from '@/lib/api';
 
 interface CalculatorTabProps {
   order: OrderDetail;
+  onRateUpdated?: () => void;
 }
 
-export default function CalculatorTab({ order }: CalculatorTabProps) {
+export default function CalculatorTab({ order, onRateUpdated }: CalculatorTabProps) {
   const [baseCost, setBaseCost] = useState('');
   const [miles, setMiles] = useState(order.miles?.toString() || '');
   const [margin, setMargin] = useState('');
   const [accessorials, setAccessorials] = useState<Array<{ name: string; amount: number }>>([]);
+  const [submitting, setSubmitting] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [success, setSuccess] = useState(false);
 
   const baseCostNum = parseFloat(baseCost) || 0;
   const marginNum = parseFloat(margin) || 0;
@@ -40,6 +45,35 @@ export default function CalculatorTab({ order }: CalculatorTabProps) {
 
   const removeAccessorial = (index: number) => {
     setAccessorials(accessorials.filter((_, i) => i !== index));
+  };
+
+  const handleSubmitQuote = async () => {
+    if (finalQuote <= 0) {
+      setError('Quote must be greater than 0');
+      return;
+    }
+
+    try {
+      setSubmitting(true);
+      setError(null);
+      setSuccess(false);
+      
+      await apiClient.updateOrderRate(order.id, finalQuote);
+      
+      setSuccess(true);
+      // Call callback to refresh order details
+      if (onRateUpdated) {
+        onRateUpdated();
+      }
+      
+      // Clear success message after 3 seconds
+      setTimeout(() => setSuccess(false), 3000);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Failed to update rate');
+      setSuccess(false);
+    } finally {
+      setSubmitting(false);
+    }
   };
 
   return (
@@ -150,13 +184,31 @@ export default function CalculatorTab({ order }: CalculatorTabProps) {
         </div>
       </div>
 
+      {/* Error/Success Messages */}
+      {error && (
+        <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded">
+          {error}
+        </div>
+      )}
+      {success && (
+        <div className="bg-green-50 border border-green-200 text-green-700 px-4 py-3 rounded">
+          Quote submitted successfully! Rate updated to ${finalQuote.toFixed(2)}
+        </div>
+      )}
+
       {/* Submit Button */}
-      <button className="w-full bg-green-600 text-white py-3 rounded-lg font-semibold hover:bg-green-700">
-        $ Submit Quote: ${finalQuote.toFixed(2)}
+      <button
+        onClick={handleSubmitQuote}
+        disabled={submitting || finalQuote <= 0}
+        className="w-full bg-green-600 text-white py-3 rounded-lg font-semibold hover:bg-green-700 disabled:opacity-50 disabled:cursor-not-allowed"
+      >
+        {submitting ? 'Submitting...' : `$ Submit Quote: $${finalQuote.toFixed(2)}`}
       </button>
-      <p className="text-sm text-gray-500 text-center">
-        Select a load to submit quote
-      </p>
+      {finalQuote <= 0 && (
+        <p className="text-sm text-gray-500 text-center">
+          Enter values to calculate quote
+        </p>
+      )}
     </div>
   );
 }

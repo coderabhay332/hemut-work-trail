@@ -60,6 +60,11 @@ class ApiClient {
     }
   }
 
+  // GET /orders/counts
+  async getOrderCounts(): Promise<{ inbound: number; outbound: number }> {
+    return this.fetch<{ inbound: number; outbound: number }>('/orders/counts');
+  }
+
   // GET /orders
   async getOrders(params?: {
     query?: string;
@@ -102,6 +107,14 @@ class ApiClient {
     return this.fetch<{ id: string }>('/orders', {
       method: 'POST',
       body: JSON.stringify(data),
+    });
+  }
+
+  // PATCH /orders/:id/rate
+  async updateOrderRate(id: string, rate: number): Promise<void> {
+    return this.fetch<void>(`/orders/${id}/rate`, {
+      method: 'PATCH',
+      body: JSON.stringify({ rate }),
     });
   }
 }

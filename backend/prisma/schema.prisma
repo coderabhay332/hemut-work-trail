@@ -1,0 +1,73 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model Customer {
+  id            String   @id @default(uuid())
+  name          String
+  email         String?
+  phone         String?
+  billingAddress Json?   // { street, city, state, zip }
+  primaryContact Json?   // { name, email, phone }
+  createdAt     DateTime @default(now())
+  orders        Order[]
+
+  @@map("customers")
+}
+
+model Order {
+  id            String   @id @default(uuid())
+  reference     String?  // Order reference number (e.g., ORD-2024-001)
+  customerId    String
+  customer      Customer @relation(fields: [customerId], references: [id], onDelete: Cascade)
+  status        OrderStatus @default(DRAFT)
+  notes         String?
+  routeGeometry Json? // GeoJSON or polyline array
+  equipmentType String?  // e.g., "Dry Van", "Flatbed", "Refrigerated"
+  commodity     String?  // e.g., "General Freight", "Food Products"
+  weightLbs     Float?   // Total weight in pounds
+  miles         Float?   // Total miles
+  flags         Json?    // { hazmat: boolean, weekendPickup: boolean, etc. }
+  createdAt     DateTime @default(now())
+  stops         Stop[]
+
+  @@map("orders")
+}
+
+enum OrderStatus {
+  DRAFT
+  QUOTED
+  CONFIRMED
+}
+
+model Stop {
+  id          String   @id @default(uuid())
+  orderId     String
+  order       Order    @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  sequence    Int      // Order of stops (1, 2, 3, ...)
+  latitude    Float
+  longitude   Float
+  plannedTime DateTime?
+  address     String
+  stopType    StopType @default(PICKUP) // PICKUP or DELIVERY
+  city        String?  // Parsed from address or stored separately
+  state       String?  // Parsed from address or stored separately
+
+  @@unique([orderId, sequence])
+  @@index([orderId])
+  @@map("stops")
+}
+
+enum StopType {
+  PICKUP
+  DELIVERY
+}
+

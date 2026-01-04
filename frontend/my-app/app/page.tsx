@@ -15,6 +15,7 @@ export default function Home() {
   const [refreshKey, setRefreshKey] = useState(0);
   const [orderCounts, setOrderCounts] = useState({
     inbound: 0,
+    outbound: 0,
     pending: 0,
     won: 0,
     rejected: 0,
@@ -30,8 +31,11 @@ export default function Home() {
           limit: 1,
           sort: 'newest',
         });
+        // For now, outbound is the same as inbound (all orders)
+        // TODO: Implement proper outbound logic if different from inbound
         setOrderCounts({
           inbound: response.meta.total,
+          outbound: response.meta.total, // TODO: Implement outbound-specific filtering if needed
           pending: 0, // TODO: Implement status-based filtering if needed
           won: 0, // TODO: Implement status-based filtering if needed
           rejected: 0, // TODO: Implement status-based filtering if needed
@@ -134,7 +138,7 @@ export default function Home() {
             Inbound Loads {orderCounts.inbound.toLocaleString()}
           </button>
           <button className="px-4 py-2 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 text-gray-900 font-medium">
-            Outbound Loads 5
+            Outbound Loads {orderCounts.outbound.toLocaleString()}
           </button>
           <button className="px-4 py-2 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 text-gray-900 font-medium">
             $ My Bids 0

@@ -1,36 +1,125 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# Freight Marketplace Frontend
 
-## Getting Started
+React + TypeScript frontend for the Freight Marketplace application. This frontend consumes backend APIs and renders data exactly as provided - no business logic or derived calculations are performed in the frontend.
 
-First, run the development server:
+## Architecture
 
-```bash
-npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
+**Key Principle:** All data displayed in the UI comes from backend APIs. The frontend only renders what the backend provides.
+
+### Component Structure
+
+```
+src/
+├── components/
+│   ├── OrdersList.tsx              # Left panel - list of orders with pagination
+│   ├── OrderDetails.tsx            # Right panel - order details with tabs
+│   ├── CreateOrderModal.tsx        # Modal for creating new orders
+│   └── OrderDetailsTabs/
+│       ├── LoadDetailsTab.tsx      # Load/pickup/delivery details
+│       ├── CustomerDetailsTab.tsx  # Customer contact and billing info
+│       ├── LaneHistoryTab.tsx      # Lane history (placeholder)
+│       └── CalculatorTab.tsx       # Quote calculator
+├── lib/
+│   └── api.ts                      # Typed API client
+└── types/
+    └── api.ts                      # TypeScript types matching backend DTOs
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+## Setup
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+1. **Install dependencies:**
+   ```bash
+   npm install
+   ```
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+2. **Configure API URL:**
+   Create a `.env.local` file:
+   ```env
+   NEXT_PUBLIC_API_URL=http://localhost:3000
+   ```
 
-## Learn More
+3. **Start development server:**
+   ```bash
+   npm run dev
+   ```
 
-To learn more about Next.js, take a look at the following resources:
+4. **Ensure backend is running:**
+   The frontend expects the backend API to be running on `http://localhost:3000` (or the URL specified in `.env.local`).
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+## Features
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+### Main Page
+- **Left Panel:** Orders list with search, pagination, and selection
+- **Right Panel:** Order details with tabs (Load Details, Customer Details, Lane History, Calculator)
+- **Header:** Status indicators, navigation tabs, search bar, and action buttons
 
-## Deploy on Vercel
+### Order Details Tabs
+1. **Load Details:** Displays pickup/delivery locations, load information (weight, miles, equipment type, flags, etc.)
+2. **Customer Details:** Shows primary contact, billing info, and customer metrics
+3. **Lane History:** Placeholder (backend doesn't provide this data yet)
+4. **Calculator:** Quote calculator with base cost, accessorials, and margin
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
+### Create Order Modal
+- Customer selection
+- Equipment type
+- Multiple stops (pickup/delivery)
+- Address, city, state, ZIP
+- Scheduled arrival times
 
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+## API Integration
+
+All API calls go through the typed `apiClient` in `src/lib/api.ts`:
+
+- `GET /orders` - List orders with pagination
+- `GET /orders/:id` - Get order details
+- `GET /customers/:id` - Get customer details
+- `GET /customers?query=` - Search customers
+- `POST /orders` - Create new order
+
+## Data Flow
+
+1. **User interacts with UI** (clicks, searches, etc.)
+2. **Component calls API client** (`apiClient.getOrders()`, etc.)
+3. **API client fetches from backend** (using fetch)
+4. **Backend returns frontend-ready data** (all derived fields computed)
+5. **Component renders data** (no calculations, just display)
+
+## Important Notes
+
+- **No Business Logic:** The frontend does NOT compute:
+  - Origin/destination from stops
+  - Pickup/delivery dates
+  - Stop summaries
+  - Weekend flags
+  - Any derived fields
+
+- **Backend Provides Everything:** All displayed data comes directly from backend API responses
+
+- **Type Safety:** TypeScript types ensure frontend matches backend contracts exactly
+
+## Development
+
+```bash
+# Development
+npm run dev
+
+# Build
+npm run build
+
+# Start production
+npm start
+
+# Lint
+npm run lint
+```
+
+## Design Philosophy
+
+This frontend was built using the provided screenshots as **behavioral references only**. The focus was on:
+
+1. ✅ Correct component structure
+2. ✅ Correct data binding from backend
+3. ✅ Matching user flows and behavior
+4. ✅ Functional correctness over visual perfection
+
+**Note:** I used the provided screenshots purely as a behavioral reference and focused on implementing correct data contracts and flows. All data displayed comes from backend APIs with no frontend business logic.

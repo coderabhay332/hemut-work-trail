@@ -87,9 +87,10 @@ export class OrderService {
       return { id: order.id };
     });
 
-    // Invalidate orders list cache
+    // Invalidate orders list cache and counts cache
     if (cacheService.isAvailable()) {
       await cacheService.invalidateOrdersList();
+      await cacheService.del('orders:counts');
     }
 
     return result;
@@ -208,6 +209,42 @@ export class OrderService {
   }
 
   /**
+   * Get order counts (inbound = total orders, outbound = total delivery stops)
+   */
+  async getOrderCounts() {
+    const cacheKey = 'orders:counts';
+
+    // Try to get from cache
+    if (cacheService.isAvailable()) {
+      const cached = await cacheService.get<any>(cacheKey);
+      if (cached) {
+        return cached;
+      }
+    }
+
+    const [totalOrders, deliveryStops] = await Promise.all([
+      prisma.order.count(),
+      prisma.stop.count({
+        where: {
+          stopType: 'DELIVERY',
+        },
+      }),
+    ]);
+
+    const result = {
+      inbound: totalOrders,
+      outbound: deliveryStops,
+    };
+
+    // Cache for 1 minute (60 seconds)
+    if (cacheService.isAvailable()) {
+      await cacheService.set(cacheKey, result, 60);
+    }
+
+    return result;
+  }
+
+  /**
    * Get order details with stops ordered by sequence
    * Returns frontend-ready data with all computed fields
    */
@@ -259,6 +296,38 @@ export class OrderService {
     }
 
     return result;
+  }
+
+  /**
+   * Update order rate
+   */
+  async updateOrderRate(orderId: string | number, rate: number): Promise<void> {
+    // Convert string ID to number if needed
+    const id = typeof orderId === 'string' ? parseInt(orderId, 10) : orderId;
+    if (isNaN(id)) {
+      throw new Error('Invalid order ID');
+    }
+
+    // Verify order exists
+    const order = await prisma.order.findUnique({
+      where: { id },
+    });
+
+    if (!order) {
+      throw new Error('Order not found');
+    }
+
+    // Update rate
+    await prisma.order.update({
+      where: { id },
+      data: { rate },
+    });
+
+    // Invalidate cache for this order and orders list
+    if (cacheService.isAvailable()) {
+      await cacheService.invalidateOrder(String(id));
+      await cacheService.invalidateOrdersList();
+    }
   }
 
   /**
@@ -314,9 +383,10 @@ export class OrderService {
       });
     });
 
-    // Invalidate cache for this order and orders list
+    // Invalidate cache for this order, orders list, and counts (stops changed)
     if (cacheService.isAvailable()) {
       await cacheService.invalidateOrder(String(id));
+      await cacheService.del('orders:counts');
     }
   }
 }

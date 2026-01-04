@@ -4,6 +4,7 @@ import {
   createOrderSchema,
   listOrdersQuerySchema,
   orderParamsSchema,
+  updateRateWithParamsSchema,
   updateStopsWithParamsSchema,
 } from '../schemas/order.schema';
 import { validate } from '../middleware/validation.middleware';
@@ -86,6 +87,31 @@ router.get('/', validate(listOrdersQuerySchema), orderController.listOrders.bind
 
 /**
  * @swagger
+ * /orders/counts:
+ *   get:
+ *     summary: Get order counts (inbound and outbound)
+ *     tags: [Orders]
+ *     responses:
+ *       200:
+ *         description: Order counts
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 inbound:
+ *                   type: number
+ *                   description: Total number of orders
+ *                 outbound:
+ *                   type: number
+ *                   description: Total number of delivery stops
+ *       500:
+ *         description: Server error
+ */
+router.get('/counts', orderController.getOrderCounts.bind(orderController));
+
+/**
+ * @swagger
  * /orders/{id}:
  *   get:
  *     summary: Get order details with stops
@@ -113,6 +139,43 @@ router.get('/', validate(listOrdersQuerySchema), orderController.listOrders.bind
  *         description: Server error
  */
 router.get('/:id', validate(orderParamsSchema), orderController.getOrderById.bind(orderController));
+
+/**
+ * @swagger
+ * /orders/{id}/rate:
+ *   patch:
+ *     summary: Update order rate
+ *     tags: [Orders]
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema:
+ *           type: string
+ *         description: Order ID
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required:
+ *               - rate
+ *             properties:
+ *               rate:
+ *                 type: number
+ *                 description: New rate value
+ *     responses:
+ *       200:
+ *         description: Rate updated successfully
+ *       400:
+ *         description: Invalid rate value
+ *       404:
+ *         description: Order not found
+ *       500:
+ *         description: Server error
+ */
+router.patch('/:id/rate', validate(updateRateWithParamsSchema), orderController.updateOrderRate.bind(orderController));
 
 /**
  * @swagger

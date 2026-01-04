@@ -69,6 +69,19 @@ export const customerSearchQuerySchema = z.object({
   }),
 });
 
+// Combined schema for update rate (needs both params and body)
+export const updateRateWithParamsSchema = z.object({
+  params: z.object({
+    id: z.string().transform((val) => {
+      const num = parseInt(val, 10);
+      return isNaN(num) ? val : num;
+    }),
+  }),
+  body: z.object({
+    rate: z.number().positive('Rate must be a positive number'),
+  }),
+});
+
 // Combined schema for update stops (needs both params and body)
 export const updateStopsWithParamsSchema = z.object({
   params: z.object({

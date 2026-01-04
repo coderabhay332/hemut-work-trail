@@ -84,6 +84,20 @@ export class OrderController {
   }
 
   /**
+   * GET /orders/counts
+   * Get order counts (inbound and outbound)
+   */
+  async getOrderCounts(req: Request, res: Response): Promise<void> {
+    try {
+      const counts = await orderService.getOrderCounts();
+      res.status(200).json(counts);
+    } catch (error: any) {
+      console.error('Error fetching order counts:', error.message);
+      res.status(500).json({ error: 'Failed to fetch order counts', message: error.message });
+    }
+  }
+
+  /**
    * GET /orders/:id
    * Get order details with stops
    */
@@ -101,6 +115,32 @@ export class OrderController {
     } catch (error: any) {
       console.error('Error fetching order:', error.message);
       res.status(500).json({ error: 'Failed to fetch order', message: error.message });
+    }
+  }
+
+  /**
+   * PATCH /orders/:id/rate
+   * Update order rate
+   */
+  async updateOrderRate(req: Request, res: Response): Promise<void> {
+    try {
+      const { id } = req.params;
+      const { rate } = req.body;
+
+      if (typeof rate !== 'number' || rate < 0) {
+        res.status(400).json({ error: 'Invalid rate. Rate must be a positive number' });
+        return;
+      }
+
+      await orderService.updateOrderRate(id, rate);
+      res.status(200).json({ message: 'Rate updated successfully' });
+    } catch (error: any) {
+      if (error.message === 'Order not found') {
+        res.status(404).json({ error: 'Order not found' });
+        return;
+      }
+      console.error('Error updating order rate:', error.message);
+      res.status(500).json({ error: 'Failed to update rate', message: error.message });
     }
   }
 

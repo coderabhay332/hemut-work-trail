@@ -2,6 +2,7 @@ import prisma from '../prisma/client';
 import { calculateRouteGeometry } from './route.service';
 import { Prisma } from '@prisma/client';
 import { toOrderListItemDTO, toOrderDetailDTO } from '../dto/order.dto';
+import { cacheService } from './cache.service';
 
 type OrderStatus = 'DRAFT' | 'QUOTED' | 'CONFIRMED';
 
@@ -84,6 +85,11 @@ export class OrderService {
       return { id: order.id };
     });
 
+    // Invalidate orders list cache
+    if (cacheService.isAvailable()) {
+      await cacheService.invalidateOrdersList();
+    }
+
     return result;
   }
 
@@ -96,6 +102,17 @@ export class OrderService {
     const pageNum = typeof page === 'string' ? parseInt(page, 10) : page;
     const limitNum = typeof limit === 'string' ? parseInt(limit, 10) : limit;
     const skip = (pageNum - 1) * limitNum;
+
+    // Build cache key
+    const cacheKey = `orders:list:${query || 'all'}:${pageNum}:${limitNum}`;
+
+    // Try to get from cache
+    if (cacheService.isAvailable()) {
+      const cached = await cacheService.get<any>(cacheKey);
+      if (cached) {
+        return cached;
+      }
+    }
 
     const where = query
       ? {
@@ -134,7 +151,7 @@ export class OrderService {
     // Transform to frontend-ready DTOs
     const data = orders.map(toOrderListItemDTO);
 
-    return {
+    const result = {
       data,
       meta: {
         page: pageNum,
@@ -142,6 +159,13 @@ export class OrderService {
         total,
       },
     };
+
+    // Cache for 5 minutes (300 seconds)
+    if (cacheService.isAvailable()) {
+      await cacheService.set(cacheKey, result, 300);
+    }
+
+    return result;
   }
 
   /**
@@ -149,6 +173,16 @@ export class OrderService {
    * Returns frontend-ready data with all computed fields
    */
   async getOrderById(id: string) {
+    const cacheKey = `order:${id}`;
+
+    // Try to get from cache
+    if (cacheService.isAvailable()) {
+      const cached = await cacheService.get<any>(cacheKey);
+      if (cached) {
+        return cached;
+      }
+    }
+
     const order = await prisma.order.findUnique({
       where: { id },
       include: {
@@ -172,7 +206,14 @@ export class OrderService {
     }
 
     // Transform to frontend-ready DTO
-    return toOrderDetailDTO(order);
+    const result = toOrderDetailDTO(order);
+
+    // Cache for 10 minutes (600 seconds)
+    if (cacheService.isAvailable()) {
+      await cacheService.set(cacheKey, result, 600);
+    }
+
+    return result;
   }
 
   /**
@@ -221,6 +262,11 @@ export class OrderService {
         },
       });
     });
+
+    // Invalidate cache for this order and orders list
+    if (cacheService.isAvailable()) {
+      await cacheService.invalidateOrder(orderId);
+    }
   }
 }
 

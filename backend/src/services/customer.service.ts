@@ -1,5 +1,6 @@
 import prisma from '../prisma/client';
 import { toCustomerDetailDTO } from '../dto/customer.dto';
+import { cacheService } from './cache.service';
 
 export class CustomerService {
   /**
@@ -26,6 +27,16 @@ export class CustomerService {
    * Returns frontend-ready data with computed metrics
    */
   async getCustomerById(id: string) {
+    const cacheKey = `customer:${id}`;
+
+    // Try to get from cache
+    if (cacheService.isAvailable()) {
+      const cached = await cacheService.get<any>(cacheKey);
+      if (cached) {
+        return cached;
+      }
+    }
+
     const customer = await prisma.customer.findUnique({
       where: { id },
       include: {
@@ -47,7 +58,14 @@ export class CustomerService {
     }
 
     // Transform to frontend-ready DTO
-    return toCustomerDetailDTO(customer);
+    const result = toCustomerDetailDTO(customer);
+
+    // Cache for 10 minutes (600 seconds)
+    if (cacheService.isAvailable()) {
+      await cacheService.set(cacheKey, result, 600);
+    }
+
+    return result;
   }
 }
 

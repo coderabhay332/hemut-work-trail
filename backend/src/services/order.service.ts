@@ -16,6 +16,7 @@ export interface CreateOrderInput {
   commodity?: string;
   weightLbs?: number;
   miles?: number;
+  rate?: number;
   flags?: Record<string, boolean>;
   stops: Array<{
     sequence: number;
@@ -46,7 +47,7 @@ export class OrderService {
   /**
    * Create order with stops in a transaction
    */
-  async createOrder(input: CreateOrderInput): Promise<{ id: string }> {
+  async createOrder(input: CreateOrderInput): Promise<{ id: number }> {
     // Calculate route geometry from stops
     const routeGeometry = input.routeGeometry || calculateRouteGeometry(input.stops);
 
@@ -63,6 +64,7 @@ export class OrderService {
           commodity: input.commodity,
           weightLbs: input.weightLbs,
           miles: input.miles,
+          rate: input.rate,
           flags: input.flags,
         },
       });
@@ -117,14 +119,22 @@ export class OrderService {
       }
     }
 
+    // Build search query - handle integer ID separately
     const where = query
-      ? {
-          OR: [
-            { id: { contains: query, mode: 'insensitive' as const } },
+      ? (() => {
+          const searchConditions: any[] = [
             { reference: { contains: query, mode: 'insensitive' as const } },
             { customer: { name: { contains: query, mode: 'insensitive' as const } } },
-          ],
-        }
+          ];
+          
+          // If query is a number, also search by exact ID match
+          const queryAsNumber = parseInt(query, 10);
+          if (!isNaN(queryAsNumber)) {
+            searchConditions.push({ id: queryAsNumber });
+          }
+          
+          return { OR: searchConditions };
+        })()
       : {};
 
     // Determine orderBy based on sort parameter
@@ -201,8 +211,14 @@ export class OrderService {
    * Get order details with stops ordered by sequence
    * Returns frontend-ready data with all computed fields
    */
-  async getOrderById(id: string) {
-    const cacheKey = `order:${id}`;
+  async getOrderById(id: string | number) {
+    // Convert string ID to number if needed
+    const orderId = typeof id === 'string' ? parseInt(id, 10) : id;
+    if (isNaN(orderId)) {
+      return null;
+    }
+
+    const cacheKey = `order:${orderId}`;
 
     // Try to get from cache
     if (cacheService.isAvailable()) {
@@ -213,7 +229,7 @@ export class OrderService {
     }
 
     const order = await prisma.order.findUnique({
-      where: { id },
+      where: { id: orderId },
       include: {
         customer: {
           select: {
@@ -249,10 +265,16 @@ export class OrderService {
    * Update stops for an order
    * Recalculates route geometry
    */
-  async updateStops(orderId: string, input: UpdateStopsInput): Promise<void> {
+  async updateStops(orderId: string | number, input: UpdateStopsInput): Promise<void> {
+    // Convert string ID to number if needed
+    const id = typeof orderId === 'string' ? parseInt(orderId, 10) : orderId;
+    if (isNaN(id)) {
+      throw new Error('Invalid order ID');
+    }
+
     // Verify order exists
     const order = await prisma.order.findUnique({
-      where: { id: orderId },
+      where: { id },
     });
 
     if (!order) {
@@ -265,13 +287,13 @@ export class OrderService {
     await prisma.$transaction(async (tx: Prisma.TransactionClient) => {
       // Delete existing stops
       await tx.stop.deleteMany({
-        where: { orderId },
+        where: { orderId: id },
       });
 
       // Create new stops
       await tx.stop.createMany({
         data: input.stops.map((stop) => ({
-          orderId,
+          orderId: id,
           sequence: stop.sequence,
           latitude: stop.latitude,
           longitude: stop.longitude,
@@ -285,7 +307,7 @@ export class OrderService {
 
       // Update order with new route geometry
       await tx.order.update({
-        where: { id: orderId },
+        where: { id },
         data: {
           routeGeometry,
         },
@@ -294,7 +316,7 @@ export class OrderService {
 
     // Invalidate cache for this order and orders list
     if (cacheService.isAvailable()) {
-      await cacheService.invalidateOrder(orderId);
+      await cacheService.invalidateOrder(String(id));
     }
   }
 }

@@ -11,6 +11,7 @@ export const createOrderSchema = z.object({
     commodity: z.string().optional(),
     weightLbs: z.number().positive().optional(),
     miles: z.number().positive().optional(),
+    rate: z.number().positive().optional(),
     flags: z.record(z.boolean()).optional(), // { hazmat: true, weekendPickup: false, etc. }
     stops: z.array(
       z.object({
@@ -55,7 +56,10 @@ export const listOrdersQuerySchema = z.object({
 
 export const orderParamsSchema = z.object({
   params: z.object({
-    id: z.string().uuid('Invalid order ID format'),
+    id: z.string().transform((val) => {
+      const num = parseInt(val, 10);
+      return isNaN(num) ? val : num;
+    }),
   }),
 });
 
@@ -68,7 +72,10 @@ export const customerSearchQuerySchema = z.object({
 // Combined schema for update stops (needs both params and body)
 export const updateStopsWithParamsSchema = z.object({
   params: z.object({
-    id: z.string().uuid('Invalid order ID format'),
+    id: z.string().transform((val) => {
+      const num = parseInt(val, 10);
+      return isNaN(num) ? val : num;
+    }),
   }),
   body: z.object({
     stops: z.array(

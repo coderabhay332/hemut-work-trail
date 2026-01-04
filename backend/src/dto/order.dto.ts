@@ -17,6 +17,7 @@ export interface OrderListItemDTO {
   commodity: string;
   weightLbs: number | null;
   miles: number | null;
+  rate: number | null;
   stopsSummary: { pickups: number; deliveries: number };
   createdAt: string;
 }
@@ -33,6 +34,7 @@ export interface OrderDetailDTO {
   commodity: string | null;
   weightLbs: number | null;
   miles: number | null;
+  rate: number | null;
   flags: {
     hazmat: boolean;
     weekendPickup: boolean;
@@ -124,8 +126,8 @@ export function toOrderListItemDTO(
   const deliveries = sortedStops.filter((s) => (s as any).stopType === 'DELIVERY').length;
   
   return {
-    id: order.id,
-    reference: order.reference || `ORD-${order.id.slice(0, 8).toUpperCase()}`,
+    id: order.id.toString(),
+    reference: order.reference || `ORD-${String(order.id).padStart(8, '0')}`,
     customerName: order.customer.name,
     origin,
     destination,
@@ -135,6 +137,7 @@ export function toOrderListItemDTO(
     commodity: order.commodity || 'General Freight',
     weightLbs: order.weightLbs,
     miles: order.miles,
+    rate: order.rate,
     stopsSummary: { pickups, deliveries },
     createdAt: order.createdAt.toISOString(),
   };
@@ -174,8 +177,8 @@ export function toOrderDetailDTO(
   const mergedFlags = { ...defaultFlags, ...flags };
   
   return {
-    id: order.id,
-    reference: order.reference || `ORD-${order.id.slice(0, 8).toUpperCase()}`,
+    id: order.id.toString(),
+    reference: order.reference || `ORD-${String(order.id).padStart(8, '0')}`,
     customerId: order.customerId,
     customerName: order.customer.name,
     status: order.status,
@@ -185,6 +188,7 @@ export function toOrderDetailDTO(
     commodity: order.commodity,
     weightLbs: order.weightLbs,
     miles: order.miles,
+    rate: order.rate,
     flags: mergedFlags,
     createdAt: order.createdAt.toISOString(),
     stops: sortedStops.map((stop) => ({

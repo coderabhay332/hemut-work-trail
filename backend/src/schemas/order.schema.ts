@@ -49,6 +49,7 @@ export const listOrdersQuerySchema = z.object({
     query: z.string().optional(),
     page: z.string().optional().transform((val) => (val ? parseInt(val, 10) : 1)),
     limit: z.string().optional().transform((val) => (val ? parseInt(val, 10) : 10)),
+    sort: z.enum(['newest', 'oldest', 'shortest', 'longest']).optional().default('newest'),
   }),
 });
 

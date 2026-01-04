@@ -69,8 +69,9 @@ export class OrderController {
    */
   async listOrders(req: Request, res: Response): Promise<void> {
     try {
-      const { query, page, limit } = req.query as any;
-      const result = await orderService.listOrders(query, page, limit);
+      const { query, page, limit, sort } = req.query as any;
+      console.log('Controller received sort:', sort);
+      const result = await orderService.listOrders(query, page, limit, sort);
       // Response shape: { data: [...], meta: { page, limit, total } }
       res.status(200).json(result);
     } catch (error: any) {

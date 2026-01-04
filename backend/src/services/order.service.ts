@@ -97,14 +97,17 @@ export class OrderService {
    * List orders with pagination and search
    * Returns frontend-ready data with computed derived fields
    */
-  async listOrders(query?: string, page: number = 1, limit: number = 10) {
+  async listOrders(query?: string, page: number = 1, limit: number = 10, sort: string = 'newest') {
     // Ensure page and limit are integers
     const pageNum = typeof page === 'string' ? parseInt(page, 10) : page;
     const limitNum = typeof limit === 'string' ? parseInt(limit, 10) : limit;
     const skip = (pageNum - 1) * limitNum;
 
-    // Build cache key
-    const cacheKey = `orders:list:${query || 'all'}:${pageNum}:${limitNum}`;
+    // Normalize sort value to handle undefined or invalid values
+    const normalizedSort = (sort || 'newest').toLowerCase();
+    
+    // Build cache key including sort (normalize it)
+    const cacheKey = `orders:list:${query || 'all'}:${pageNum}:${limitNum}:${normalizedSort}`;
 
     // Try to get from cache
     if (cacheService.isAvailable()) {
@@ -124,12 +127,38 @@ export class OrderService {
         }
       : {};
 
+    // Determine orderBy based on sort parameter
+    let orderBy: any;
+    
+    console.log('Sort parameter received:', sort, 'Normalized:', normalizedSort);
+    
+    switch (normalizedSort) {
+      case 'oldest':
+        orderBy = { createdAt: 'asc' };
+        break;
+      case 'shortest':
+        // Sort by miles ascending (nulls will be sorted last by Prisma)
+        orderBy = { miles: 'asc' };
+        break;
+      case 'longest':
+        // Sort by miles descending (nulls will be sorted first by Prisma, so we need to handle this)
+        // For longest, we want non-null values first, so desc is correct
+        orderBy = { miles: 'desc' };
+        break;
+      case 'newest':
+      default:
+        orderBy = { createdAt: 'desc' };
+        break;
+    }
+    
+    console.log('OrderBy applied:', JSON.stringify(orderBy));
+
     const [orders, total] = await Promise.all([
       prisma.order.findMany({
         where,
         skip,
         take: limitNum,
-        orderBy: { createdAt: 'desc' },
+        orderBy,
         include: {
           customer: {
             select: {
